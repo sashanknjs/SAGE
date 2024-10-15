@@ -1,4 +1,4 @@
-python3-opencv
+opencv-python
 langchain
 langchain_google_genai
 langchain-community
