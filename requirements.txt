@@ -1,5 +1,4 @@
-libgl1-mesa-dev
-opencv-python
+opencv-python-headless
 langchain
 langchain_google_genai
 langchain-community
