@@ -6,5 +6,4 @@ python-dotenv
 SpeechRecognition
 streamlit
 pyttsx3
-pyaudio
-portaudio19-dev
+https://files.pythonhosted.org/packages/b0/6a/d25812e5f79f06285767ec607b39149d02aa3b31d50c2269768f48768930/PyAudio-0.2.14-cp312-cp312-win_amd64.whl
