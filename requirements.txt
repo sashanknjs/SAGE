@@ -6,4 +6,6 @@ python-dotenv
 SpeechRecognition
 streamlit
 pyttsx3
-sudo apt-get install python3-pyaudio
+python3-all-dev
+portaudio19-dev
+pyaudio
