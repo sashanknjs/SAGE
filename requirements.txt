@@ -1,5 +1,4 @@
-libgl1
-opencv-python
+python3-opencv
 langchain
 langchain_google_genai
 langchain-community
