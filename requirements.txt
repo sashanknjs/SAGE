@@ -1,3 +1,4 @@
+libgl1-mesa-glx
 opencv-python
 langchain
 langchain_google_genai
