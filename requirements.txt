@@ -7,5 +7,4 @@ SpeechRecognition
 streamlit
 pyttsx3
 pyaudio
-libportaudio2
-libportaudio-dev
+portaudio19-dev
