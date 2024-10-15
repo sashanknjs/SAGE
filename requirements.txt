@@ -6,4 +6,5 @@ python-dotenv
 SpeechRecognition
 streamlit
 pyttsx3
+setuptools
 pyaudio
