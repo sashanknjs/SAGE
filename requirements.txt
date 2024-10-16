@@ -10,3 +10,4 @@ setuptools
 pyaudio
 streamlit_webrtc
 aioice
+aiortc
