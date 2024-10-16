@@ -9,3 +9,4 @@ pyttsx3
 setuptools
 pyaudio
 streamlit_webrtc
+aioice
