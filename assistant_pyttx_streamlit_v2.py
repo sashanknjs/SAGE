@@ -9,7 +9,7 @@ st.title("WebRTC Audio and Video Stream with Streamlit")
 WEBRTC_CLIENT_SETTINGS = ClientSettings(
     rtc_configuration={
         "iceServers": [
-            {"urls": ["stun:stun.l.google.com:19302"]},  # STUN server
+            {"urls": ["stun1:stun.l.google.com:19302"]},  # STUN server
             {
                 "urls": "turn:turnserver.example.com:3478",  # Example TURN server (replace with a valid TURN server)
                 "username": "user",
