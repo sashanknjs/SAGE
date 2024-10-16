@@ -1,19 +1,50 @@
 import base64
-from threading import Lock, Thread
+import threading
 import time
+
 import cv2
 import streamlit as st
-from cv2 import VideoCapture, imencode
+from streamlit_webrtc import webrtc_streamer, WebRtcMode, VideoProcessorBase, AudioProcessorBase
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.schema.messages import SystemMessage
 from langchain_community.chat_message_histories import ChatMessageHistory
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_google_genai import ChatGoogleGenerativeAI
-from speech_recognition import Microphone, Recognizer, UnknownValueError
 import pyttsx3
-import threading  # For running TTS asynchronously
-from streamlit_webrtc import VideoTransformerBase, webrtc_streamer
+
+
+class VideoProcessor(VideoProcessorBase):
+    def __init__(self):
+        self.frame = None
+
+    def recv(self, frame):
+        self.frame = frame.to_ndarray(format="bgr24")
+        return frame
+
+    def get_frame(self):
+        return self.frame
+
+
+class AudioProcessor(AudioProcessorBase):
+    def __init__(self, assistant, recognizer, stop_callback):
+        self.assistant = assistant
+        self.recognizer = recognizer
+        self.stop_callback = stop_callback
+
+    def recv(self, audio_frame):
+        audio_data = audio_frame.to_ndarray()
+        # You would need to convert audio_data to a format that can be processed by the speech recognizer
+        try:
+            # Process the audio input and convert it to text
+            prompt = self.recognizer.recognize_whisper(audio_data, model="base", language="english")
+            # Use the assistant to generate a response
+            self.assistant.answer(prompt, video_processor.get_frame(), self.stop_callback)
+        except Exception as e:
+            print("Audio processing error:", e)
+
+        return audio_frame
+
 
 class Assistant:
     def __init__(self, model):
@@ -23,7 +54,7 @@ class Assistant:
         self.tts_lock = threading.Lock()
 
     def answer(self, prompt, image, stop_listening_callback):
-        if not prompt:
+        if not prompt or image is None:
             return
 
         self.last_prompt = prompt
@@ -31,7 +62,7 @@ class Assistant:
 
         # Encode the image as a JPEG
         _, buffer = cv2.imencode(".jpeg", image)
-        
+
         # Convert the buffer to a base64 string
         image_base64 = base64.b64encode(buffer).decode('utf-8')
 
@@ -42,28 +73,24 @@ class Assistant:
 
         self.last_response = response
         print("Response:", response)
-        
+
         if response:
             self._tts(response, stop_listening_callback)
 
     def _tts(self, response, stop_listening_callback):
-        """Convert the response text to speech using pyttsx3 in a separate thread."""
         def speak():
             with self.tts_lock:
                 engine = pyttsx3.init()
-                engine.setProperty('rate', 150)  # Set TTS speaking rate
-                engine.setProperty('volume', 1.0)  # Set TTS volume
-                
+                engine.setProperty('rate', 150)
+                engine.setProperty('volume', 1.0)
+
                 engine.say(response)
-                engine.runAndWait()  # Wait for TTS to finish
-                
-                # Stop and reset engine after finishing
+                engine.runAndWait()
+
                 engine.stop()
 
-            # After speaking, resume listening
-            stop_listening_callback()  # This will restart the microphone listener
+            stop_listening_callback()
 
-        # Run TTS in a separate thread to avoid blocking the main thread
         threading.Thread(target=speak).start()
 
     def _create_inference_chain(self, model):
@@ -80,7 +107,7 @@ class Assistant:
         the user about what you are learning.
 
         Be friendly and helpful. Show some personality. Do not be too formal.
-        """        
+        """
 
         prompt_template = ChatPromptTemplate.from_messages(
             [
@@ -100,7 +127,6 @@ class Assistant:
         )
 
         chain = prompt_template | model | StrOutputParser()
-
         chat_message_history = ChatMessageHistory()
         return RunnableWithMessageHistory(
             chain,
@@ -109,80 +135,43 @@ class Assistant:
             history_messages_key="chat_history",
         )
 
-class VideoTransformer(VideoTransformerBase):
-    def __init__(self, assistant):
-        super().__init__()
-        self.assistant = assistant
-        self.last_frame = None
 
-    def transform(self, frame):
-        self.last_frame = frame.to_ndarray(format="bgr")
-        return self.last_frame
+def main():
+    # Initialize recognizer and assistant model
+    assistant_model = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest")
+    assistant = Assistant(assistant_model)
 
-    def get_last_frame(self):
-        return self.last_frame
+    # Streamlit UI setup
+    st.title("SAGE: A Video Assistant")
+    st.write("This application recognizes celebrities from your webcam feed and responds to your questions.")
 
-def audio_callback(recognizer, audio, assistant, video_transformer):
-    """Process audio input and send it to the assistant."""
-    try:
-        prompt = recognizer.recognize_google(audio)
-        assistant.answer(prompt, video_transformer.get_last_frame(), resume_listening)  # Process the audio input
+    # WebRTC video and audio streams
+    global video_processor
+    video_processor = VideoProcessor()
 
-    except UnknownValueError:
-        print("There was an error processing the audio.")
+    webrtc_streamer(
+        key="video",
+        mode=WebRtcMode.SENDRECV,
+        video_processor_factory=lambda: video_processor,
+        media_stream_constraints={"video": True, "audio": True},
+    )
 
-def stop_listening():
-    """Stop the microphone listener."""
-    global stop_listening_callback
-    if stop_listening_callback:
-        stop_listening_callback(wait_for_stop=False)
+    recognizer = Recognizer()
 
-def resume_listening():
-    """Resume listening to the microphone after the assistant finishes responding."""
-    global stop_listening_callback
-    stop_listening_callback = recognizer.listen_in_background(microphone, lambda audio: audio_callback(recognizer, audio, assistant, video_transformer))
-
-# Initialize recognizer and microphone
-recognizer = Recognizer()
-microphone = Microphone()
-
-# Start listening to the microphone in a separate thread
-with microphone as source:
-    recognizer.adjust_for_ambient_noise(source)
-
-stop_listening_callback = recognizer.listen_in_background(microphone, lambda audio: audio_callback(recognizer, audio, assistant, None))
-
-# Initialize the model and the assistant
-model = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest")
-assistant = Assistant(model)
-
-# Streamlit UI
-st.title("SAGE: A Video Assistant")
-st.write("This application recognizes celebrities from your webcam feed and responds to your questions.")
-
-# WebRTC streamer for video
-video_transformer = VideoTransformer(assistant)
-webrtc_streamer(key="example", video_transformer_factory=lambda: video_transformer)
-
-# Create columns for layout
-col1, col2 = st.columns([2, 1])
-
-with col1:
-    st.write("### Webcam Feed")
-    frame_placeholder = st.empty()
-
-with col2:
-    st.write("### Chat")
+    # Placeholder for showing responses
     prompt_placeholder = st.empty()
     response_placeholder = st.empty()
 
-# Loop to update the video frame and display chat messages
-while True:
-    frame = video_transformer.get_last_frame()
-    if frame is not None:
-        frame_placeholder.image(frame, channels="BGR", caption="Webcam Feed")
+    # Add audio processor to process the speech
+    webrtc_streamer(
+        key="audio",
+        mode=WebRtcMode.SENDRECV,
+        audio_processor_factory=lambda: AudioProcessor(assistant, recognizer, lambda: None),
+        media_stream_constraints={"audio": True},
+    )
 
-        # Display the chat history
+    # Loop to update UI with the assistant responses
+    while True:
         if assistant.last_prompt and assistant.last_response:
             prompt_placeholder.markdown(f"*Prompt:* {assistant.last_prompt}")
             response_placeholder.markdown(f"*Response:* {assistant.last_response}")
@@ -192,7 +181,8 @@ while True:
             prompt_placeholder.markdown("*Prompt:* Waiting for input...")
             response_placeholder.markdown("*Response:* Waiting for response...")
 
-    time.sleep(0.1)  # Adjust the sleep time as necessary
+        time.sleep(0.1)
 
-# Stop the microphone listener when the app ends
-stop_listening()
+
+if __name__ == "__main__":
+    main()
