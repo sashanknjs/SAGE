@@ -8,6 +8,4 @@ streamlit
 pyttsx3
 setuptools
 pyaudio
-streamlit_webrtc
-aioice
-aiortc
+flask
