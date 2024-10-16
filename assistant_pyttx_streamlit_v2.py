@@ -1,35 +1,36 @@
 import streamlit as st
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, WebRtcMode, RTCConfiguration
+import streamlit_webrtc as st_webrtc
 
-# Define a VideoTransformer class for video processing
-class VideoTransformer(VideoTransformerBase):
-    def transform(self, frame):
-        # You can process the frame here if needed
-        return frame
+def video_capture_callback(frames):
+    # Process the video frames here (e.g., apply effects, analyze content)
+    # For simplicity, we'll just display them directly
+    st_webrtc.VideoProcessor(frames).show()
+
+def audio_capture_callback(frames):
+    # Process the audio frames here (e.g., perform speech-to-text, analyze pitch)
+    # For simplicity, we'll just display a waveform
+    st_webrtc.AudioProcessor(frames).show()
 
 def main():
-    st.title("Audio and Video Streaming with Streamlit-WeRTC")
+    st.title("Audio/Video Streaming with Streamlit-WebRTC")
 
-    # Description of the application
-    st.write("This app captures audio and video from your browser and streams it in real-time.")
+    # Request user media permissions
+    user_media_constraints = {
+        "video": True,
+        "audio": True
+    }
 
-    # Configure ICE servers
-    rtc_configuration = RTCConfiguration({
-        "iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]  # Google's public STUN server
-    })
+    # Create video and audio capture streams
+    video_stream = st_webrtc.WebRTCVideoStream(user_media_constraints)
+    audio_stream = st_webrtc.WebRTCAudioStream(user_media_constraints)
 
-    # Set up the WebRTC streamer
-    webrtc_streamer(
-        key="audio-video",
-        mode=WebRtcMode.SENDONLY,
-        media_stream_constraints={"video": True, "audio": True},
-        rtc_configuration=rtc_configuration,
-        video_processor_factory=VideoTransformer,
-        async_processing=False,
-    )
+    # Start the video and audio capture processes
+    video_stream.start(video_capture_callback)
+    audio_stream.start(audio_capture_callback)
 
-    # Debugging output
-    st.write("If the video does not appear, check the browser's console for errors.")
+    # Display the captured video and audio
+    st_webrtc.VideoProcessor(video_stream).show()
+    st_webrtc.AudioProcessor(audio_stream).show()
 
 if __name__ == "__main__":
     main()
