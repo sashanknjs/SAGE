@@ -1,31 +1,26 @@
 import streamlit as st
-from streamlit_webrtc import webrtc_streamer, WebRtcMode, VideoTransformerBase
-import av
-import cv2
+from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
 
-class VideoProcessor(VideoTransformerBase):
-    def recv(self, frame):
-        img = frame.to_ndarray(format="bgr24")
-        
-        # You can add any processing to the frame here if needed.
-        # For now, it's just returning the original frame.
-        
-        return av.VideoFrame.from_ndarray(img, format="bgr24")
+# Define a VideoTransformer class for video processing
+class VideoTransformer(VideoTransformerBase):
+    def transform(self, frame):
+        # You can process the frame here if needed
+        return frame
 
 def main():
-    st.title("Webcam Stream using streamlit-webrtc")
-    
-    # Start the webrtc_streamer
-    webrtc_ctx = webrtc_streamer(
-        key="example",
-        mode=WebRtcMode.SENDRECV,
-        video_processor_factory=VideoProcessor,
-        media_stream_constraints={"video": True, "audio": False},
+    st.title("Audio and Video Streaming with Streamlit-WeRTC")
+
+    # Description of the application
+    st.write("This app captures audio and video from your browser and streams it in real-time.")
+
+    # Set up the WebRTC streamer
+    webrtc_streamer(
+        key="audio-video",
+        mode="sendonly",  # Only send video and audio, no need to receive data
+        media_stream_constraints={"video": True, "audio": True},  # Enable video and audio capture
+        video_processor_factory=VideoTransformer,  # Optional video processing
+        async_processing=False,  # Synchronous processing for real-time streaming
     )
 
-    # Optional check to see if the video_processor is active
-    if webrtc_ctx.video_processor:
-        st.write("Webcam is active.")
-    
 if __name__ == "__main__":
     main()
