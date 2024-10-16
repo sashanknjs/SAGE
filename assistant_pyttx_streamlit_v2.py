@@ -1,36 +1,19 @@
 import streamlit as st
-import streamlit_webrtc as st_webrtc
+from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
+import av
 
-def video_capture_callback(frames):
-    # Process the video frames here (e.g., apply effects, analyze content)
-    # For simplicity, we'll just display them directly
-    st_webrtc.VideoProcessor(frames).show()
+# Title of the app
+st.title("Audio and Video Streaming with Streamlit WebRTC")
 
-def audio_capture_callback(frames):
-    # Process the audio frames here (e.g., perform speech-to-text, analyze pitch)
-    # For simplicity, we'll just display a waveform
-    st_webrtc.AudioProcessor(frames).show()
+# Define a class for video transformation (optional)
+class VideoTransformer(VideoTransformerBase):
+    def transform(self, frame):
+        img = frame.to_ndarray(format="bgr24")
+        # You can add any image processing here
+        return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-def main():
-    st.title("Audio/Video Streaming with Streamlit-WebRTC")
+# Start the WebRTC streamer with video transformation
+webrtc_streamer(key="example", video_frame_callback=VideoTransformer().transform)
 
-    # Request user media permissions
-    user_media_constraints = {
-        "video": True,
-        "audio": True
-    }
-
-    # Create video and audio capture streams
-    video_stream = st_webrtc.WebRTCVideoStream(user_media_constraints)
-    audio_stream = st_webrtc.WebRTCAudioStream(user_media_constraints)
-
-    # Start the video and audio capture processes
-    video_stream.start(video_capture_callback)
-    audio_stream.start(audio_capture_callback)
-
-    # Display the captured video and audio
-    st_webrtc.VideoProcessor(video_stream).show()
-    st_webrtc.AudioProcessor(audio_stream).show()
-
-if __name__ == "__main__":
-    main()
+# Instructions for users
+st.write("Click 'START' to begin streaming your webcam video and audio.")
