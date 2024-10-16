@@ -1,5 +1,5 @@
 import streamlit as st
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
+from streamlit_webrtc import webrtc_streamer, VideoTransformerBase, WebRtcMode
 
 # Define a VideoTransformer class for video processing
 class VideoTransformer(VideoTransformerBase):
@@ -16,7 +16,7 @@ def main():
     # Set up the WebRTC streamer
     webrtc_streamer(
         key="audio-video",
-        mode="sendonly",  # Only send video and audio, no need to receive data
+        mode=WebRtcMode.SENDONLY,  # Only send video and audio, no need to receive data
         media_stream_constraints={"video": True, "audio": True},  # Enable video and audio capture
         video_processor_factory=VideoTransformer,  # Optional video processing
         async_processing=False,  # Synchronous processing for real-time streaming
