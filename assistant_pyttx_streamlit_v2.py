@@ -23,10 +23,13 @@ def main():
         key="audio-video",
         mode=WebRtcMode.SENDONLY,
         media_stream_constraints={"video": True, "audio": True},
-        rtc_configuration=rtc_configuration,  # Add RTC configuration for better connectivity
+        rtc_configuration=rtc_configuration,
         video_processor_factory=VideoTransformer,
         async_processing=False,
     )
+
+    # Debugging output
+    st.write("If the video does not appear, check the browser's console for errors.")
 
 if __name__ == "__main__":
     main()
